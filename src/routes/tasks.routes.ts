@@ -5,6 +5,7 @@ import { taskFiltersSchema, createTaskSchema, updateTaskSchema } from '../valida
 import { createCommentSchema, updateCommentSchema } from '../validations/comment'
 import {
   getTasks, getMyTasks, getTaskById, createTask, updateTask, softDeleteTask,
+  addLink, deleteLink,
 } from '../services/task.service'
 import { addComment, updateComment, softDeleteComment } from '../services/comment.service'
 import { uploadAttachment, deleteAttachment } from '../services/attachment.service'
@@ -99,6 +100,24 @@ router.delete('/:id/attachments/:aid', requireAuth, async (req: Request, res: Re
   try {
     await deleteAttachment(req.params.aid, req.auth!.userId, req.auth!.role)
     successRes(res, { message: 'Attachment deleted' })
+  } catch (error) { handleRouteError(res, error) }
+})
+
+// POST /api/tasks/:id/links
+router.post('/:id/links', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { url, label } = req.body as { url?: string; label?: string }
+    if (!url) { errorRes(res, 'URL is required', 400); return }
+    const link = await addLink(req.params.id, { url, label }, req.auth!.userId, req.auth!.role)
+    successRes(res, link, 201)
+  } catch (error) { handleRouteError(res, error) }
+})
+
+// DELETE /api/tasks/:id/links/:lid
+router.delete('/:id/links/:lid', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    await deleteLink(req.params.lid, req.auth!.userId, req.auth!.role)
+    successRes(res, { message: 'Link deleted' })
   } catch (error) { handleRouteError(res, error) }
 })
 

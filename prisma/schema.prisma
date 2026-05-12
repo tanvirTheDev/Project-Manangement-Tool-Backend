@@ -129,10 +129,20 @@ model Task {
   activityLogs ActivityLog[]
   attachments  Attachment[]
   comments     Comment[]
+  links        TaskLink[]
   assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
   project      Project       @relation(fields: [projectId], references: [id])
   reporter     User          @relation("TaskReporter", fields: [reporterId], references: [id])
   timeEntries  TimeEntry[]
+}
+
+model TaskLink {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  url       String
+  label     String?
+  createdAt DateTime @default(now())
 }
 
 model Comment {

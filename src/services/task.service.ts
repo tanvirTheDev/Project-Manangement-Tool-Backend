@@ -38,6 +38,10 @@ const taskDetailSelect = {
       user: { select: { id: true, name: true, avatar: true } },
     },
   },
+  links: {
+    orderBy: { createdAt: 'asc' as const },
+    select: { id: true, url: true, label: true, createdAt: true },
+  },
   timeEntries: {
     where: { deletedAt: null },
     orderBy: { date: 'desc' as const },
@@ -255,4 +259,36 @@ export async function softDeleteTask(id: string, requesterId: string, requesterR
   if (!isAdminOrManager && task.reporterId !== requesterId) throw createError('Access denied', 403)
 
   await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } })
+}
+
+export async function addLink(
+  taskId: string,
+  data: { url: string; label?: string },
+  requesterId: string,
+  requesterRole: UserRole
+) {
+  const task = await prisma.task.findUnique({ where: { id: taskId, deletedAt: null }, select: { projectId: true } })
+  if (!task) throw createError('Task not found', 404)
+  await verifyMembership(task.projectId, requesterId, requesterRole)
+
+  try { new URL(data.url) } catch { throw createError('Invalid URL', 400) }
+
+  return prisma.taskLink.create({
+    data: { taskId, url: data.url, label: data.label },
+    select: { id: true, url: true, label: true, createdAt: true },
+  })
+}
+
+export async function deleteLink(
+  linkId: string,
+  requesterId: string,
+  requesterRole: UserRole
+) {
+  const link = await prisma.taskLink.findUnique({
+    where: { id: linkId },
+    select: { id: true, task: { select: { projectId: true } } },
+  })
+  if (!link) throw createError('Link not found', 404)
+  await verifyMembership(link.task.projectId, requesterId, requesterRole)
+  await prisma.taskLink.delete({ where: { id: linkId } })
 }
