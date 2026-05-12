@@ -33,4 +33,21 @@ export async function deleteImage(publicId: string): Promise<void> {
   await cloudinary.uploader.destroy(publicId)
 }
 
+export async function uploadFile(
+  buffer: Buffer,
+  fileName: string,
+  mimeType: string
+): Promise<UploadResult> {
+  const base64 = buffer.toString('base64')
+  const dataUri = `data:${mimeType};base64,${base64}`
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: 'datafever-hub/attachments',
+    resource_type: 'auto',
+    public_id: fileName.replace(/\.[^/.]+$/, ''),
+    use_filename: true,
+    unique_filename: true,
+  })
+  return { url: result.secure_url, publicId: result.public_id }
+}
+
 export { cloudinary }

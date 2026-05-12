@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import { Prisma } from '@prisma/client'
 
 export function successRes<T>(
   res: Response,
@@ -18,6 +19,10 @@ export function createError(message: string, statusCode: number): Error {
 }
 
 export function handleRouteError(res: Response, error: unknown): Response {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P1017') {
+    console.error('[DB] Neon connection reset — server restarting connection')
+    return errorRes(res, 'Database temporarily unavailable, please retry', 503)
+  }
   if (error instanceof Error) {
     const e = error as Error & { statusCode?: number }
     if (e.statusCode === 401) return errorRes(res, e.message || 'Unauthorized', 401)

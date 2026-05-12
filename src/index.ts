@@ -5,6 +5,10 @@ import cookieParser from 'cookie-parser'
 import { env } from './lib/env'
 import { authRouter } from './routes/auth.routes'
 import { usersRouter } from './routes/users.routes'
+import { clientsRouter } from './routes/clients.routes'
+import { projectsRouter } from './routes/projects.routes'
+import { tasksRouter } from './routes/tasks.routes'
+import { timesheetsRouter } from './routes/timesheets.routes'
 
 const app = express()
 
@@ -25,6 +29,10 @@ app.get('/health', (_req, res) => {
 // API routes
 app.use('/api/auth', authRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/clients', clientsRouter)
+app.use('/api/projects', projectsRouter)
+app.use('/api/tasks', tasksRouter)
+app.use('/api/timesheets', timesheetsRouter)
 
 // 404 handler
 app.use((_req, res) => {

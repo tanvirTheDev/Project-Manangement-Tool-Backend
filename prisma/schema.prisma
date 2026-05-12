@@ -7,32 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  MEMBER
-}
-
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  name         String
-  avatar       String?
-  role         UserRole  @default(MEMBER)
-  designation  String?
-  department   String?
-  phone        String?
-  bio          String?
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
-
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  passwordHash        String
+  name                String
+  avatar              String?
+  role                UserRole             @default(MEMBER)
+  designation         String?
+  department          String?
+  phone               String?
+  bio                 String?
+  isActive            Boolean              @default(true)
+  lastLoginAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+  activityLogs        ActivityLog[]        @relation("ActivityUser")
+  attachments         Attachment[]         @relation("AttachmentUploader")
+  managedClients      Client[]             @relation("ClientAccountManager")
+  comments            Comment[]            @relation("CommentAuthor")
   inviteTokens        InviteToken[]
+  notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
+  ledProjects         Project[]            @relation("ProjectLead")
+  projectMembers      ProjectMember[]
   refreshTokens       RefreshToken[]
+  assignedTasks       Task[]               @relation("TaskAssignee")
+  reportedTasks       Task[]               @relation("TaskReporter")
+  timeEntries         TimeEntry[]          @relation("TimeEntryUser")
 }
 
 model InviteToken {
@@ -49,18 +52,188 @@ model InviteToken {
 model PasswordResetToken {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   token     String   @unique
   used      Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model RefreshToken {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   tokenHash String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Client {
+  id               String       @id @default(uuid())
+  name             String
+  contactPerson    String
+  email            String
+  phone            String?
+  status           ClientStatus @default(ACTIVE)
+  notes            String?
+  accountManagerId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
+  accountManager   User?        @relation("ClientAccountManager", fields: [accountManagerId], references: [id])
+  projects         Project[]
+}
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  clientId    String?
+  leadId      String
+  status      ProjectStatus   @default(PLANNING)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+  client      Client?         @relation(fields: [clientId], references: [id])
+  lead        User            @relation("ProjectLead", fields: [leadId], references: [id])
+  members     ProjectMember[]
+  tasks       Task[]
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  joinedAt  DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@id([projectId, userId])
+}
+
+model Task {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  projectId    String
+  assigneeId   String?
+  reporterId   String
+  status       TaskStatus    @default(TODO)
+  priority     Priority      @default(MEDIUM)
+  position     Int           @default(0)
+  dueDate      DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  activityLogs ActivityLog[]
+  attachments  Attachment[]
+  comments     Comment[]
+  assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  project      Project       @relation(fields: [projectId], references: [id])
+  reporter     User          @relation("TaskReporter", fields: [reporterId], references: [id])
+  timeEntries  TimeEntry[]
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  taskId    String
+  authorId  String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  author    User      @relation("CommentAuthor", fields: [authorId], references: [id])
+  task      Task      @relation(fields: [taskId], references: [id])
+}
+
+model Attachment {
+  id           String    @id @default(uuid())
+  taskId       String
+  fileUrl      String
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  cloudinaryId String
+  uploadedById String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+  task         Task      @relation(fields: [taskId], references: [id])
+  uploadedBy   User      @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  action    String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id])
+  user      User     @relation("ActivityUser", fields: [userId], references: [id])
+}
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  taskId      String
+  userId      String
+  date        DateTime  @db.Date
+  hours       Decimal   @db.Decimal(4, 2)
+  description String?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  task        Task      @relation(fields: [taskId], references: [id])
+  user        User      @relation("TimeEntryUser", fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  MEMBER_ADDED
+  TASK_ASSIGNED
+  TASK_DONE
+  COMMENT_ADDED
+  MENTION
 }
