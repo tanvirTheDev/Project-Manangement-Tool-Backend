@@ -9,6 +9,8 @@ import { clientsRouter } from './routes/clients.routes'
 import { projectsRouter } from './routes/projects.routes'
 import { tasksRouter } from './routes/tasks.routes'
 import { timesheetsRouter } from './routes/timesheets.routes'
+import { notificationsRouter } from './routes/notifications.routes'
+import { dashboardRouter } from './routes/dashboard.routes'
 
 const app = express()
 
@@ -33,6 +35,8 @@ app.use('/api/clients', clientsRouter)
 app.use('/api/projects', projectsRouter)
 app.use('/api/tasks', tasksRouter)
 app.use('/api/timesheets', timesheetsRouter)
+app.use('/api/notifications', notificationsRouter)
+app.use('/api/dashboard', dashboardRouter)
 
 // 404 handler
 app.use((_req, res) => {

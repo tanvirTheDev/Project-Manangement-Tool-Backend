@@ -202,8 +202,8 @@ model Notification {
   userId    String
   type      NotificationType
   message   String
-  link      String?
-  read      Boolean          @default(false)
+  link      String           @default("")
+  isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
   user      User             @relation(fields: [userId], references: [id])
 }
