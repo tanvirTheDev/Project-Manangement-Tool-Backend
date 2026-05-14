@@ -12,6 +12,7 @@ import { timesheetsRouter } from './routes/timesheets.routes'
 import { notificationsRouter } from './routes/notifications.routes'
 import { dashboardRouter } from './routes/dashboard.routes'
 import searchRouter from './routes/search.routes'
+import leadsRouter from './routes/leads.routes'
 
 const app = express()
 
@@ -39,6 +40,7 @@ app.use('/api/timesheets', timesheetsRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/search', searchRouter)
+app.use('/api/leads', leadsRouter)
 
 // 404 handler
 app.use((_req, res) => {

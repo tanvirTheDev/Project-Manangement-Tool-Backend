@@ -36,6 +36,10 @@ model User {
   assignedTasks       Task[]               @relation("TaskAssignee")
   reportedTasks       Task[]               @relation("TaskReporter")
   timeEntries         TimeEntry[]          @relation("TimeEntryUser")
+  assignedLeads       Lead[]               @relation("LeadAssignee")
+  createdLeads        Lead[]               @relation("LeadCreator")
+  leadActivities      LeadActivity[]       @relation("LeadActivityUser")
+  leadEmailLogs       LeadEmailLog[]       @relation("EmailLogSender")
 
   @@index([name])
   @@index([email])
@@ -255,4 +259,101 @@ enum NotificationType {
   TASK_DONE
   COMMENT_ADDED
   MENTION
+}
+
+enum LeadIndustry {
+  GARMENTS
+  SCHOOL
+  PHARMACY
+  HOSPITAL
+  REAL_ESTATE
+  MANUFACTURING
+  RETAIL
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  PROPOSAL_SENT
+  WON
+  LOST
+}
+
+enum LeadSource {
+  COLD_OUTREACH
+  REFERRAL
+  WALK_IN
+  WEBSITE
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum LeadActivityType {
+  NOTE
+  EMAIL_SENT
+  WHATSAPP_SENT
+  CALLED
+  MEETING
+  PROPOSAL_SENT
+  STATUS_CHANGED
+}
+
+model Lead {
+  id              String        @id @default(uuid())
+  companyName     String
+  industry        LeadIndustry
+  contactPerson   String
+  designation     String?
+  email           String?
+  phone           String
+  whatsapp        String?
+  source          LeadSource    @default(COLD_OUTREACH)
+  status          LeadStatus    @default(NEW)
+  position        Int           @default(0)
+  interestedIn    String?
+  estimatedValue  Decimal?      @db.Decimal(12, 2)
+  notes           String?
+  assignedToId    String?
+  createdById     String
+  lastContactedAt DateTime?
+  expectedCloseAt DateTime?
+  wonAt           DateTime?
+  lostAt          DateTime?
+  lostReason      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  assignedTo      User?         @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  createdBy       User          @relation("LeadCreator", fields: [createdById], references: [id])
+  activities      LeadActivity[]
+  emailLogs       LeadEmailLog[]
+
+  @@index([companyName])
+  @@index([status])
+}
+
+model LeadActivity {
+  id          String           @id @default(uuid())
+  leadId      String
+  userId      String
+  type        LeadActivityType
+  title       String
+  description String?
+  createdAt   DateTime         @default(now())
+  lead        Lead             @relation(fields: [leadId], references: [id])
+  user        User             @relation("LeadActivityUser", fields: [userId], references: [id])
+}
+
+model LeadEmailLog {
+  id          String   @id @default(uuid())
+  leadId      String
+  sentById    String
+  subject     String
+  templateKey String
+  status      String   @default("SENT")
+  sentAt      DateTime @default(now())
+  lead        Lead     @relation(fields: [leadId], references: [id])
+  sentBy      User     @relation("EmailLogSender", fields: [sentById], references: [id])
 }
