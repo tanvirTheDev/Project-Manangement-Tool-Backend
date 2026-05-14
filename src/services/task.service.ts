@@ -2,7 +2,7 @@ import { prisma } from '../lib/db'
 import { createError } from '../lib/api-response'
 import { TaskStatus, Priority, UserRole, type Prisma } from '@prisma/client'
 import { createNotification } from './notification.service'
-import type { CreateTaskInput, UpdateTaskInput, TaskFiltersInput } from '../validations/task'
+import type { CreateTaskInput, UpdateTaskInput, TaskFiltersInput, MyTasksQueryInput } from '../validations/task'
 
 const taskSelect = {
   id: true, title: true, description: true, projectId: true,
@@ -101,20 +101,56 @@ export async function getTasks(projectId: string, filters: TaskFiltersInput, req
   return { tasks: data, nextCursor, total }
 }
 
-export async function getMyTasks(userId: string) {
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const endOfToday = new Date(startOfToday.getTime() + 86400000)
-  const endOfWeek = new Date(startOfToday.getTime() + 7 * 86400000)
+// Bangladesh is UTC+6
+const BD_OFFSET_MS = 6 * 60 * 60 * 1000
 
-  const tasks = await prisma.task.findMany({
-    where: { assigneeId: userId, deletedAt: null, status: { not: TaskStatus.DONE } },
-    select: {
-      ...taskSelect,
-      project: { select: { id: true, name: true } },
-    },
-    orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }],
-  })
+function startOfBDDay(utcNow: Date = new Date()): Date {
+  const bdNow = new Date(utcNow.getTime() + BD_OFFSET_MS)
+  const bdMidnightUTC = Date.UTC(bdNow.getUTCFullYear(), bdNow.getUTCMonth(), bdNow.getUTCDate())
+  return new Date(bdMidnightUTC - BD_OFFSET_MS)
+}
+
+function startOfBDWeekMonday(todayBDStart: Date): Date {
+  const bdDay = new Date(todayBDStart.getTime() + BD_OFFSET_MS)
+  const dow = bdDay.getUTCDay() // 0=Sun
+  const daysFromMon = (dow === 0 ? 6 : dow - 1)
+  return new Date(todayBDStart.getTime() - daysFromMon * 86400000)
+}
+
+export async function getMyTasks(userId: string, query: MyTasksQueryInput) {
+  const todayStart = startOfBDDay()
+  const todayEnd = new Date(todayStart.getTime() + 86400000)
+  const weekMonday = startOfBDWeekMonday(todayStart)
+  const weekSunday = new Date(weekMonday.getTime() + 7 * 86400000)
+
+  const thisWeekStart = new Date()
+  thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay() + 1)
+  thisWeekStart.setHours(0, 0, 0, 0)
+  const thisWeekEnd = new Date(thisWeekStart.getTime() + 7 * 86400000)
+
+  const where: Prisma.TaskWhereInput = {
+    assigneeId: userId,
+    deletedAt: null,
+    ...(query.priority && { priority: query.priority }),
+    ...(query.projectId && { projectId: query.projectId }),
+    ...(!query.showCompleted && { status: { not: TaskStatus.DONE } }),
+  }
+
+  const [tasks, doneThisWeek] = await Promise.all([
+    prisma.task.findMany({
+      where,
+      select: { ...taskSelect, project: { select: { id: true, name: true } } },
+      orderBy: [{ dueDate: 'asc' }, { priority: 'desc' }],
+    }),
+    prisma.task.count({
+      where: {
+        assigneeId: userId,
+        deletedAt: null,
+        status: TaskStatus.DONE,
+        updatedAt: { gte: thisWeekStart, lt: thisWeekEnd },
+      },
+    }),
+  ])
 
   const overdue: typeof tasks = []
   const dueToday: typeof tasks = []
@@ -123,15 +159,21 @@ export async function getMyTasks(userId: string) {
   const noDueDate: typeof tasks = []
 
   for (const t of tasks) {
+    if (t.status === TaskStatus.DONE) { noDueDate.push(t); continue }
     if (!t.dueDate) { noDueDate.push(t); continue }
     const d = new Date(t.dueDate)
-    if (d < startOfToday) overdue.push(t)
-    else if (d < endOfToday) dueToday.push(t)
-    else if (d < endOfWeek) thisWeek.push(t)
+    if (d < todayStart) overdue.push(t)
+    else if (d < todayEnd) dueToday.push(t)
+    else if (d < weekSunday) thisWeek.push(t)
     else later.push(t)
   }
 
-  return { overdue, dueToday, thisWeek, later, noDueDate }
+  const totalOpen = tasks.filter((t) => t.status !== TaskStatus.DONE).length
+
+  return {
+    overdue, dueToday, thisWeek, later, noDueDate,
+    meta: { totalOpen, overdueCount: overdue.length, dueTodayCount: dueToday.length, doneThisWeek },
+  }
 }
 
 export async function getTaskById(id: string, requesterId: string, requesterRole: UserRole) {

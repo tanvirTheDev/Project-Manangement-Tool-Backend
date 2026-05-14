@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import multer from 'multer'
 import { requireAuth } from '../middleware/auth'
-import { taskFiltersSchema, createTaskSchema, updateTaskSchema } from '../validations/task'
+import { taskFiltersSchema, createTaskSchema, updateTaskSchema, myTasksQuerySchema } from '../validations/task'
 import { createCommentSchema, updateCommentSchema } from '../validations/comment'
 import {
   getTasks, getMyTasks, getTaskById, createTask, updateTask, softDeleteTask,
@@ -17,7 +17,9 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 262
 // GET /api/tasks/my
 router.get('/my', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await getMyTasks(req.auth!.userId)
+    const parsed = myTasksQuerySchema.safeParse(req.query)
+    if (!parsed.success) { errorRes(res, parsed.error.issues[0].message, 400); return }
+    const result = await getMyTasks(req.auth!.userId, parsed.data)
     successRes(res, result)
   } catch (error) { handleRouteError(res, error) }
 })

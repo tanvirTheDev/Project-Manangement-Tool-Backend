@@ -24,6 +24,13 @@ export const taskFiltersSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
 })
 
+export const myTasksQuerySchema = z.object({
+  priority: z.nativeEnum(Priority).optional(),
+  projectId: z.string().uuid().optional(),
+  showCompleted: z.coerce.boolean().default(false),
+})
+
 export type CreateTaskInput = z.infer<typeof createTaskSchema>
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>
 export type TaskFiltersInput = z.infer<typeof taskFiltersSchema>
+export type MyTasksQueryInput = z.infer<typeof myTasksQuerySchema>
