@@ -6,6 +6,7 @@ import { env } from '../lib/env'
 import {
   getTaskAssignedHtml, getMentionHtml, getTaskDoneHtml, getMemberAddedHtml,
 } from '../emails/notification'
+import { pushToUser } from '../lib/sse.service'
 
 const resend = new Resend(env.RESEND_API_KEY)
 
@@ -84,9 +85,12 @@ export async function createNotification(params: {
   emailExtra?: Record<string, string>
 }): Promise<void> {
   const link = params.link ?? ''
-  await prisma.notification.create({
+  const saved = await prisma.notification.create({
     data: { userId: params.userId, type: params.type, message: params.message, link },
+    select: { id: true, type: true, message: true, link: true, isRead: true, createdAt: true },
   })
+  // Push to open SSE connections in real-time
+  pushToUser(params.userId, 'notification', saved)
   // Fire email async — never block the main flow
   void sendNotificationEmail(params.userId, params.type, params.message, link, params.emailExtra)
 }

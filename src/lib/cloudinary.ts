@@ -50,4 +50,15 @@ export async function uploadFile(
   return { url: result.secure_url, publicId: result.public_id }
 }
 
+export async function uploadPdf(buffer: Buffer, folder: string): Promise<UploadResult> {
+  const base64 = buffer.toString('base64')
+  const dataUri = `data:application/pdf;base64,${base64}`
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: `datafever-hub/${folder}`,
+    resource_type: 'raw',
+    format: 'pdf',
+  })
+  return { url: result.secure_url, publicId: result.public_id }
+}
+
 export { cloudinary }

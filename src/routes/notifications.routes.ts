@@ -3,8 +3,37 @@ import { requireAuth } from '../middleware/auth'
 import { notificationQuerySchema } from '../validations/notification'
 import { getUserNotifications, markRead, markAllRead } from '../services/notification.service'
 import { successRes, errorRes, handleRouteError } from '../lib/api-response'
+import { registerStream, unregisterStream } from '../lib/sse.service'
 
 const router = Router()
+
+// GET /api/notifications/stream  — Server-Sent Events
+// EventSource sends cookies automatically; requireAuth reads df-token cookie
+router.get('/stream', requireAuth, (req: Request, res: Response): void => {
+  const userId = req.auth!.userId
+
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no') // Disable nginx buffering
+  res.flushHeaders()
+
+  registerStream(userId, res)
+
+  // Ping every 25s to prevent proxy/load-balancer from closing idle connections
+  const pingInterval = setInterval(() => {
+    try {
+      res.write('event: ping\ndata: {}\n\n')
+    } catch {
+      clearInterval(pingInterval)
+    }
+  }, 25_000)
+
+  req.on('close', () => {
+    clearInterval(pingInterval)
+    unregisterStream(userId, res)
+  })
+})
 
 // GET /api/notifications
 router.get('/', requireAuth, async (req: Request, res: Response): Promise<void> => {

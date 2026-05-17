@@ -13,6 +13,8 @@ import { notificationsRouter } from './routes/notifications.routes'
 import { dashboardRouter } from './routes/dashboard.routes'
 import searchRouter from './routes/search.routes'
 import leadsRouter from './routes/leads.routes'
+import { milestonesRouter } from './routes/milestones.routes'
+import { invoicesRouter } from './routes/invoices.routes'
 
 const app = express()
 
@@ -41,6 +43,8 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/search', searchRouter)
 app.use('/api/leads', leadsRouter)
+app.use('/api/projects/:id/milestones', milestonesRouter)
+app.use('/api/invoices', invoicesRouter)
 
 // 404 handler
 app.use((_req, res) => {

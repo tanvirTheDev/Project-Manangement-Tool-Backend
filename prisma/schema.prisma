@@ -40,6 +40,8 @@ model User {
   createdLeads        Lead[]               @relation("LeadCreator")
   leadActivities      LeadActivity[]       @relation("LeadActivityUser")
   leadEmailLogs       LeadEmailLog[]       @relation("EmailLogSender")
+  createdInvoices     Invoice[]            @relation("InvoiceCreator")
+  invoiceLineItems    InvoiceLineItem[]    @relation("InvoiceLineUser")
 
   @@index([name])
   @@index([email])
@@ -89,6 +91,7 @@ model Client {
   deletedAt        DateTime?
   accountManager   User?        @relation("ClientAccountManager", fields: [accountManagerId], references: [id])
   projects         Project[]
+  invoices         Invoice[]
 
   @@index([name])
 }
@@ -109,6 +112,8 @@ model Project {
   lead        User            @relation("ProjectLead", fields: [leadId], references: [id])
   members     ProjectMember[]
   tasks       Task[]
+  milestones  Milestone[]
+  invoices    Invoice[]
 
   @@index([name])
 }
@@ -141,6 +146,7 @@ model Task {
   attachments  Attachment[]
   comments     Comment[]
   links        TaskLink[]
+  milestones   MilestoneTask[]
   assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
   project      Project       @relation(fields: [projectId], references: [id])
   reporter     User          @relation("TaskReporter", fields: [reporterId], references: [id])
@@ -346,6 +352,38 @@ model LeadActivity {
   user        User             @relation("LeadActivityUser", fields: [userId], references: [id])
 }
 
+enum MilestoneStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Milestone {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  projectId   String
+  status      MilestoneStatus @default(UPCOMING)
+  startDate   DateTime?
+  dueDate     DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+  project     Project         @relation(fields: [projectId], references: [id])
+  tasks       MilestoneTask[]
+}
+
+model MilestoneTask {
+  milestoneId String
+  taskId      String
+  addedAt     DateTime  @default(now())
+  milestone   Milestone @relation(fields: [milestoneId], references: [id])
+  task        Task      @relation(fields: [taskId], references: [id])
+
+  @@id([milestoneId, taskId])
+}
+
 model LeadEmailLog {
   id          String   @id @default(uuid())
   leadId      String
@@ -356,4 +394,52 @@ model LeadEmailLog {
   sentAt      DateTime @default(now())
   lead        Lead     @relation(fields: [leadId], references: [id])
   sentBy      User     @relation("EmailLogSender", fields: [sentById], references: [id])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+model Invoice {
+  id            String          @id @default(uuid())
+  invoiceNumber String          @unique
+  clientId      String
+  projectId     String?
+  status        InvoiceStatus   @default(DRAFT)
+  periodStart   DateTime        @db.Date
+  periodEnd     DateTime        @db.Date
+  hourlyRate    Decimal         @db.Decimal(10, 2)
+  totalHours    Decimal         @db.Decimal(8, 2)
+  totalAmount   Decimal         @db.Decimal(12, 2)
+  notes         String?
+  pdfUrl        String?
+  generatedAt   DateTime?
+  createdById   String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  client        Client          @relation(fields: [clientId], references: [id])
+  project       Project?        @relation(fields: [projectId], references: [id])
+  createdBy     User            @relation("InvoiceCreator", fields: [createdById], references: [id])
+  lineItems     InvoiceLineItem[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  userId      String
+  taskId      String?
+  taskTitle   String
+  hours       Decimal  @db.Decimal(6, 2)
+  date        DateTime @db.Date
+  description String?
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  user        User     @relation("InvoiceLineUser", fields: [userId], references: [id])
 }
