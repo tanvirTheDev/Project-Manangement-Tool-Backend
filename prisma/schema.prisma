@@ -42,6 +42,7 @@ model User {
   leadEmailLogs       LeadEmailLog[]       @relation("EmailLogSender")
   createdInvoices     Invoice[]            @relation("InvoiceCreator")
   invoiceLineItems    InvoiceLineItem[]    @relation("InvoiceLineUser")
+  gitLinks            GitLink[]            @relation("GitLinkCreator")
 
   @@index([name])
   @@index([email])
@@ -147,6 +148,8 @@ model Task {
   comments     Comment[]
   links        TaskLink[]
   milestones   MilestoneTask[]
+  gitLinks     GitLink[]
+  gitEvents    GitEvent[]
   assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
   project      Project       @relation(fields: [projectId], references: [id])
   reporter     User          @relation("TaskReporter", fields: [reporterId], references: [id])
@@ -428,6 +431,45 @@ model Invoice {
 
   @@index([clientId])
   @@index([status])
+}
+
+enum GitEventType {
+  COMMIT
+  PULL_REQUEST_OPENED
+  PULL_REQUEST_MERGED
+  PULL_REQUEST_CLOSED
+  BRANCH_CREATED
+}
+
+model GitLink {
+  id          String     @id @default(uuid())
+  taskId      String
+  task        Task       @relation(fields: [taskId], references: [id])
+  provider    String
+  repoName    String
+  repoUrl     String
+  branchName  String?
+  createdAt   DateTime   @default(now())
+  createdById String
+  createdBy   User       @relation("GitLinkCreator", fields: [createdById], references: [id])
+  events      GitEvent[]
+
+  @@unique([taskId, repoName])
+}
+
+model GitEvent {
+  id         String       @id @default(uuid())
+  gitLinkId  String
+  gitLink    GitLink      @relation(fields: [gitLinkId], references: [id])
+  taskId     String
+  task       Task         @relation(fields: [taskId], references: [id])
+  type       GitEventType
+  title      String
+  url        String
+  authorName String
+  sha        String?
+  prNumber   Int?
+  createdAt  DateTime     @default(now())
 }
 
 model InvoiceLineItem {

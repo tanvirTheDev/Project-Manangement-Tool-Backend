@@ -15,6 +15,9 @@ import searchRouter from './routes/search.routes'
 import leadsRouter from './routes/leads.routes'
 import { milestonesRouter } from './routes/milestones.routes'
 import { invoicesRouter } from './routes/invoices.routes'
+import { reportsRouter } from './routes/reports.routes'
+import { gitRouter } from './routes/git.routes'
+import { webhookRouter } from './routes/webhook.routes'
 
 const app = express()
 
@@ -24,8 +27,12 @@ app.use(
     credentials: true,
   })
 )
-app.use(express.json({ limit: '10mb' }))
 app.use(cookieParser())
+
+// Webhook route uses raw body for HMAC verification — must come before express.json()
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRouter)
+
+app.use(express.json({ limit: '10mb' }))
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -45,6 +52,8 @@ app.use('/api/search', searchRouter)
 app.use('/api/leads', leadsRouter)
 app.use('/api/projects/:id/milestones', milestonesRouter)
 app.use('/api/invoices', invoicesRouter)
+app.use('/api/reports', reportsRouter)
+app.use('/api/tasks/:id/git', gitRouter)
 
 // 404 handler
 app.use((_req, res) => {
