@@ -11,6 +11,7 @@ const users = [
   { email: 'ah18bd@gmail.com',             password: 'Member@1234',  name: 'AH Member',        role: 'MEMBER'  },
   { email: 'jlab.tamal.paul@gmail.com',    password: 'Member@1234',  name: 'Tamal Paul',       role: 'MEMBER'  },
   { email: 'jlabfoysal@gmail.com',         password: 'Member@1234',  name: 'Foysal',           role: 'MEMBER'  },
+  { email: 'nasir.nj33@gmail.com',         password: 'Member@1234',  name: 'Nasir',            role: 'MEMBER'  },
 ] as const
 
 async function main() {
